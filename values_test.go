@@ -198,13 +198,50 @@ func Test_bytesToValues(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			values := bytesToValues(tt.input, tt.maxMatchLen, tt.maxSearchBuffLen, tt.minMatchLen)
+			values := BytesToValues(tt.input, tt.maxMatchLen, tt.maxSearchBuffLen, tt.minMatchLen)
 			valuesRepr := ""
 			for _, v := range values {
 				valuesRepr += fmt.Sprintf("%v", v)
 			}
 			if valuesRepr != tt.wantValuesRepr {
 				t.Errorf("unexpected repr (got '%s' want '%s')", valuesRepr, tt.wantValuesRepr)
+			}
+		})
+	}
+}
+
+func Test_ValuesToBytes(t *testing.T) {
+	var tests = []struct {
+		name  string
+		input []byte
+	}{
+		{
+			name:  "Only literals",
+			input: []byte("abcdefghijkl"),
+		},
+		{
+			name:  "Empty input",
+			input: []byte(""),
+		},
+		{
+			name:  "Single match",
+			input: []byte("XXXaaaXXX"), // "XXXaaa<6,3>"
+		},
+		{
+			name:  "Multiple matches",
+			input: []byte("XXXabXXXcdXXXijXXX"),
+		},
+		{
+			name:  "Reapeated character",
+			input: []byte("XXXXXXXXXXXXXXXXXXXXXXX"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			values := BytesToValues(tt.input, 999, 999, 3)
+			got := ValuesToBytes(values)
+			if string(tt.input) != string(got) {
+				t.Errorf("got '%s' want '%s'", got, tt.input)
 			}
 		})
 	}
