@@ -11,8 +11,8 @@ func Test_getLongestMatchPosAndLen(t *testing.T) {
 		searchBuff    []byte
 		lookaheadBuff []byte
 		wantPos       int
-		wantLen       int
-		minMatchLen   int
+		wantLen       byte
+		minMatchLen   byte
 	}{
 		{
 			name:          "Empty search buffer",
@@ -116,89 +116,89 @@ func Test_bytesToValues(t *testing.T) {
 	var tests = []struct {
 		name             string
 		input            []byte
-		maxMatchLen      int
-		maxSearchBuffLen int
-		minMatchLen      int
+		minMatchLen      byte
+		maxMatchLen      byte
+		maxSearchBuffLen uint16
 		wantValuesRepr   string
 	}{
 		{
 			name:             "No matches at all",
 			input:            []byte("abcd"),
-			maxMatchLen:      999,
-			maxSearchBuffLen: 999,
 			minMatchLen:      0,
+			maxMatchLen:      255,
+			maxSearchBuffLen: 255,
 			wantValuesRepr:   "abcd",
 		},
 		{
 			name:             "Match at the end",
 			input:            []byte("abcd abcd"),
-			maxMatchLen:      999,
-			maxSearchBuffLen: 999,
 			minMatchLen:      0,
+			maxMatchLen:      255,
+			maxSearchBuffLen: 255,
 			wantValuesRepr:   "abcd <5,4>",
 		},
 		{
 			name:             "Match in the middle",
 			input:            []byte("abcd abcd ghij"),
-			maxMatchLen:      999,
-			maxSearchBuffLen: 999,
 			minMatchLen:      0,
+			maxMatchLen:      255,
+			maxSearchBuffLen: 255,
 			wantValuesRepr:   "abcd <5,5>ghij",
 		},
 		{
 			name:             "Two matches",
 			input:            []byte("XXabXXcdXX"),
-			maxMatchLen:      999,
-			maxSearchBuffLen: 999,
 			minMatchLen:      2,
+			maxMatchLen:      255,
+			maxSearchBuffLen: 255,
 			// The matches are the same length - first one is selected.
 			wantValuesRepr: "XXab<4,2>cd<8,2>",
 		},
 		{
 			name:             "Three matches",
 			input:            []byte("XXabXXcdXXijXX"),
-			maxMatchLen:      999,
-			maxSearchBuffLen: 999,
 			minMatchLen:      2,
+			maxMatchLen:      255,
+			maxSearchBuffLen: 255,
 			// The matches are the same length - first one is selected.
 			wantValuesRepr: "XXab<4,2>cd<8,2>ij<12,2>",
 		},
 		{
 			name:             "A match, almost too long",
 			input:            []byte("XXXabcdXXX"),
-			maxMatchLen:      3,
-			maxSearchBuffLen: 999,
 			minMatchLen:      3,
+			maxMatchLen:      3,
+			maxSearchBuffLen: 255,
 			wantValuesRepr:   "XXXabcd<7,3>",
 		},
 		{
 			name:             "A match, too long but is not consumed",
 			input:            []byte("XXXXabcdXXXX"),
-			maxMatchLen:      3,
-			maxSearchBuffLen: 999,
 			minMatchLen:      3,
+			maxMatchLen:      3,
+			maxSearchBuffLen: 255,
 			wantValuesRepr:   "XXXXabcd<8,3>X",
 		},
 		{
 			name:             "A match, outside search buffer",
 			input:            []byte("XXXabcdefXXX"),
-			maxMatchLen:      999,
-			maxSearchBuffLen: 4,
 			minMatchLen:      3,
+			maxMatchLen:      255,
+			maxSearchBuffLen: 4,
 			wantValuesRepr:   "XXXabcdefXXX",
 		},
 		{
 			name:             "A match, almost outside search buffer",
 			input:            []byte("XXXaXXX"),
-			maxMatchLen:      999,
-			maxSearchBuffLen: 4,
 			minMatchLen:      3,
+			maxMatchLen:      255,
+			maxSearchBuffLen: 4,
 			wantValuesRepr:   "XXXa<4,3>",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			values := BytesToValues(tt.input, tt.maxMatchLen, tt.maxSearchBuffLen, tt.minMatchLen)
+			values := BytesToValues(tt.input, tt.minMatchLen, tt.maxMatchLen, tt.maxSearchBuffLen)
 			valuesRepr := ""
 			for _, v := range values {
 				valuesRepr += fmt.Sprintf("%v", v)
@@ -238,7 +238,7 @@ func Test_ValuesToBytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			values := BytesToValues(tt.input, 999, 999, 3)
+			values := BytesToValues(tt.input, 255, 255, 3)
 			got := ValuesToBytes(values)
 			if string(tt.input) != string(got) {
 				t.Errorf("got '%s' want '%s'", got, tt.input)
