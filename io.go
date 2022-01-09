@@ -27,10 +27,11 @@ func (bw *BinaryWriter) Write(values []Value) {
 		code uint64
 		l    byte
 	)
+	bw.writeTable()
 	for _, v := range values {
 		err = bw.w.WriteBool(v.IsLiteral)
 		if err != nil {
-			panic("writing bool")
+			panic("write bool")
 		}
 		if v.IsLiteral {
 			code, l = bw.getCodeForValue(v.GetLiteralBinary())
@@ -44,6 +45,30 @@ func (bw *BinaryWriter) Write(values []Value) {
 	}
 	bw.w.Close()
 }
+func (bw *BinaryWriter) writeTable() {
+	// First 8 bits denote amount of elements in the table.
+	if len(bw.codeTable) == 0 {
+		panic("code table of length 0")
+	}
+	if err := bw.w.WriteBits(uint64(len(bw.codeTable)-1), 8); err != nil {
+		panic(err)
+	}
+	for k, v := range bw.codeTable {
+		// Next, we write (byte, byte, code) triplets.
+		// First byte denotes a value to be encoded/decoded.
+		if err := bw.w.WriteBits(uint64(k), 8); err != nil {
+			panic(err)
+		}
+		// Second byte denotes size of the code.
+		if err := bw.w.WriteBits(uint64(v.bits), 8); err != nil {
+			panic(err)
+		}
+		// After that, code is written.
+		if err := bw.w.WriteBits(uint64(v.c), v.bits); err != nil {
+			panic(err)
+		}
+	}
+}
 
 func (bw *BinaryWriter) getCodeForValue(val byte) (uint64, byte) {
 	code := bw.codeTable[val]
@@ -55,15 +80,15 @@ type BinaryReader struct {
 	valTable map[Code]byte
 }
 
-func NewBinaryReader(reader io.Reader, valTable map[Code]byte) BinaryReader {
+func NewBinaryReader(reader io.Reader) BinaryReader {
 	r := bitio.NewReader(reader)
 	return BinaryReader{
-		r:        r,
-		valTable: valTable,
+		r: r,
 	}
 }
 
 func (br *BinaryReader) Read() []Value {
+	br.valTable = br.readTable()
 	values := make([]Value, 0)
 	for {
 		val, err := br.consumeValue()
@@ -76,6 +101,37 @@ func (br *BinaryReader) Read() []Value {
 		values = append(values, val)
 	}
 	return values
+}
+
+func (br *BinaryReader) readTable() map[Code]byte {
+	valTable := make(map[Code]byte)
+	// First 8 bits denote amount of elements in the table.
+	size, err := br.r.ReadBits(8)
+	if err != nil {
+		panic(err)
+	}
+	// We substracted 1 when writing to avoid overflowing byte.
+	size += 1
+	var i uint64
+	for i = 0; i < size; i++ {
+		// Value.
+		val, err := br.r.ReadBits(8)
+		if err != nil {
+			panic(err)
+		}
+		// Code size.
+		codeBits, err := br.r.ReadBits(8)
+		if err != nil {
+			panic(err)
+		}
+		// Code itself.
+		code, err := br.r.ReadBits(byte(codeBits))
+		if err != nil {
+			panic(err)
+		}
+		valTable[Code{c: code, bits: byte(codeBits)}] = byte(val)
+	}
+	return valTable
 }
 
 func (br *BinaryReader) consumeValue() (Value, error) {

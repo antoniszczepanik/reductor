@@ -98,12 +98,16 @@ func constructHuffmanTree(values []Value) Node {
 }
 
 type Code struct {
-	c    byte
+	c    uint64
 	bits byte
 }
 
+func (c Code) String() string {
+	return fmt.Sprintf("%08b(%d)\n", c.c, c.bits)
+}
+
 func addBit(c Code, bit bool) Code {
-	var b byte
+	var b uint64
 	if bit {
 		b = 1
 	}

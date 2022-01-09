@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -9,6 +8,7 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
+	"time"
 )
 
 func min(a, b int) int {
@@ -25,14 +25,6 @@ func max(a, b int) int {
 	return a
 }
 
-func revTable(m CodeTable) map[Code]byte {
-	rev := make(map[Code]byte, len(m))
-	for k, v := range m {
-		rev[v] = k
-	}
-	return rev
-}
-
 func compress(
 	source io.Reader,
 	sink io.Writer,
@@ -42,11 +34,11 @@ func compress(
 
 	graphf io.Writer,
 	lzf io.Writer,
-) map[byte]Code {
+) {
 	log.Printf("Config: min-match=%d, max-match=%d, search-size=%d\n", minMatch, maxMatch, searchSize)
 	input, err := ioutil.ReadAll(source)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	log.Printf("Input size(bytes): %d\n", len(input))
 	// LZ77 coding.
@@ -61,13 +53,15 @@ func compress(
 	// Write binary representation.
 	bw := NewBinaryWriter(sink, codeTable)
 	bw.Write(values)
-	return codeTable
 }
 
-func decompress(r io.Reader, revTable map[Code]byte) []byte {
-	br := NewBinaryReader(r, revTable)
-	new_values := br.Read()
-	return ValuesToBytes(new_values)
+func decompress(source io.Reader, sink io.Writer) {
+	br := NewBinaryReader(source)
+	newVals := br.Read()
+	_, err := sink.Write(ValuesToBytes(newVals))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] <filename>\n", os.Args[0])
@@ -81,10 +75,11 @@ func main() {
 		minMatch, maxMatch, searchSize uint
 	)
 
-	mode := flag.Bool("decompress", false, "run the program in decompresson mode (compression is default)")
+	mode := flag.Bool("compress", true, "run the program in compression mode")
+	name := flag.String("name", "", "name for the file with compressed data")
 	flag.UintVar(&minMatch, "min-match", 4, "minimum match size for LZ77 algorithm")
 	flag.UintVar(&maxMatch, "max-match", 255, "maximum match size for LZ77 algorithm (upper limit is 255)")
-	flag.UintVar(&searchSize, "search-size", 32000, "size of the search window of LZ77 algorithm (upper limit is 65535)")
+	flag.UintVar(&searchSize, "search-size", 1024, "size of the search window of LZ77 algorithm (upper limit is 65535)")
 
 	// Diagnostic options.
 	verbose := flag.Bool("verbose", false, "display log messages")
@@ -142,13 +137,32 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if !*mode {
-		b := &bytes.Buffer{}
+	// Compression
+	if *mode {
 		log.Printf("Compress: %s\n", filePath)
-		codeTable := compress(f, b, byte(minMatch), byte(maxMatch), uint16(searchSize), graphf, lzf)
-		log.Printf("Compressed size (bytes): %d\n", b.Len())
+		if *name == "" {
+			*name = filePath + ".reduced"
+		}
+		target, err := os.Create(*name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		start := time.Now()
+		compress(f, target, byte(minMatch), byte(maxMatch), uint16(searchSize), graphf, lzf)
+		log.Printf("Time elapsed: %s\n", time.Since(start))
+	} else {
 		log.Printf("Decompress: %s\n", filePath)
-		original := decompress(b, revTable(codeTable))
-		fmt.Printf("%s", string(original))
+		var sink io.Writer
+		if *name == "" {
+			*name = filePath[:len(filePath)-8] + ".unreduced"
+			log.Printf("Writing decompressed data to %s\n", *name)
+			sink, err = os.Create(*name)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		start := time.Now()
+		decompress(f, sink)
+		log.Printf("Time elapsed: %s\n", time.Since(start))
 	}
 }
