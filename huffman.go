@@ -35,11 +35,11 @@ func (n Node) DumpGraphviz(w io.Writer) {
 func (n Node) getGraphviz() string {
 	repr := fmt.Sprintf("\t%d[label=\"value=%d freq=%d\"]\n", n.id, n.value, n.freq)
 	if n.Left != nil {
-		repr += fmt.Sprintf("\t%d -> %d\n", n.id, n.Left.id)
+		repr += fmt.Sprintf("\t%d -> %d[label=\"0\"]\n", n.id, n.Left.id)
 		repr += n.Left.getGraphviz()
 	}
 	if n.Right != nil {
-		repr += fmt.Sprintf("\t%d -> %d\n", n.id, n.Right.id)
+		repr += fmt.Sprintf("\t%d -> %d[label=\"1\"]\n", n.id, n.Right.id)
 		repr += n.Right.getGraphviz()
 	}
 	return repr
@@ -97,24 +97,42 @@ func constructHuffmanTree(values []Value) Node {
 	return heap.Pop(&freqs).(Node)
 }
 
-func createCodeTable(root *Node, prefix string) map[byte]string {
-	codeTable := make(map[byte]string)
-	lt := make(map[byte]string)
-	rt := make(map[byte]string)
+type Code struct {
+	c    byte
+	bits byte
+}
+
+func addBit(c Code, bit bool) Code {
+	var b byte
+	if bit {
+		b = 1
+	}
+	return Code{
+		c:    (c.c << 1) | b,
+		bits: c.bits + 1,
+	}
+}
+
+type CodeTable map[byte]Code
+
+func createCodeTable(root *Node, prefix Code) CodeTable {
+	codeTable := make(CodeTable)
+	lt := make(CodeTable)
+	rt := make(CodeTable)
 	if root.isLeaf {
 		codeTable[root.value] = prefix
 		return codeTable
 	}
 	if root.Left != nil {
-		lt = createCodeTable(root.Left, prefix+"0")
+		lt = createCodeTable(root.Left, addBit(prefix, false))
 	}
 	if root.Right != nil {
-		rt = createCodeTable(root.Right, prefix+"1")
+		rt = createCodeTable(root.Right, addBit(prefix, true))
 	}
 	return mergeTables(lt, rt)
 }
 
-func mergeTables(a, b map[byte]string) map[byte]string {
+func mergeTables(a, b CodeTable) CodeTable {
 	for k, v := range b {
 		a[k] = v
 	}

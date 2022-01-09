@@ -4,17 +4,16 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"strconv"
 
 	"github.com/icza/bitio"
 )
 
 type BinaryWriter struct {
 	w         *bitio.Writer
-	codeTable map[byte]string
+	codeTable CodeTable
 }
 
-func NewBinaryWriter(writer io.Writer, codeTable map[byte]string) BinaryWriter {
+func NewBinaryWriter(writer io.Writer, codeTable CodeTable) BinaryWriter {
 	w := bitio.NewWriter(writer)
 	return BinaryWriter{
 		w:         w,
@@ -48,19 +47,15 @@ func (bw *BinaryWriter) Write(values []Value) {
 
 func (bw *BinaryWriter) getCodeForValue(val byte) (uint64, byte) {
 	code := bw.codeTable[val]
-	i, err := strconv.ParseUint(code, 2, 64)
-	if err != nil {
-		panic("could not convert code to int")
-	}
-	return i, byte(len(code))
+	return uint64(code.c), code.bits
 }
 
 type BinaryReader struct {
 	r        *bitio.Reader
-	valTable map[string]byte
+	valTable map[Code]byte
 }
 
-func NewBinaryReader(reader io.Reader, valTable map[string]byte) BinaryReader {
+func NewBinaryReader(reader io.Reader, valTable map[Code]byte) BinaryReader {
 	r := bitio.NewReader(reader)
 	return BinaryReader{
 		r:        r,
@@ -103,17 +98,13 @@ func (br *BinaryReader) consumeValue() (Value, error) {
 }
 
 func (br *BinaryReader) readMatch() (byte, error) {
-	match := ""
+	match := Code{}
 	for {
 		b, err := br.r.ReadBool()
 		if err != nil {
 			return 0, err
 		}
-		if b {
-			match += "1"
-		} else {
-			match += "0"
-		}
+		match = addBit(match, b)
 		if val, ok := br.valTable[match]; ok {
 			return val, nil
 		}
