@@ -61,7 +61,7 @@ func (v *Value) GetPointerBinary() []byte {
 	bytes := make([]byte, 3)
 	// First 2 bytes encode a distance.
 	binary.BigEndian.PutUint16(bytes, v.distance)
-	// The last byte is length
+	// The last byte is length.
 	bytes[2] = v.length
 	return bytes
 }
