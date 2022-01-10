@@ -38,22 +38,6 @@ func (v *Value) GetLiteralBinary() byte {
 	return v.val
 }
 
-// TODO: How would you do that? What would be the return type?
-// How to get from Values representation to binary?
-//
-// - Figure out a code for each value, then huffman encode each code.
-//
-// How to get from binary to Values representation?
-//
-// - You read Huffman translation table.
-// - You can now decode all of the values:
-//      - So, you start reading a single bit prefix.
-//      - Now, you know if the element is a pointer, if so, you
-//        read and translate next 3/4 elements (they are not prefixed)
-//        and construct a pointer value for them
-//      - If not, then you read and translate a single huffman node. And
-//        create a literal value for in.
-
 // GetPointerBinary returns binary representation of pointer.
 // A pointer is serialized to a few bytes, so that there are less possible
 // nodes in a Huffman tree.
@@ -75,7 +59,8 @@ func BytesToValues(input []byte, minMatchLen, maxMatchLen byte, maxSearchBuffLen
 		l                                    byte
 	)
 
-	values := make([]Value, 0, len(input)) // Almost always it will be less, but lets over-allocate.
+	values := make([]Value, len(input)) // Almost always it will be less, but lets over-allocate.
+	value_counter := 0
 	for split := 0; split < len(input); split += 1 {
 		searchBuffStart = max(0, split-int(maxSearchBuffLen))
 		lookaheadBuffEnd = min(len(input), split+int(maxMatchLen))
@@ -85,13 +70,15 @@ func BytesToValues(input []byte, minMatchLen, maxMatchLen byte, maxSearchBuffLen
 		if split > int(minMatchLen) && l > 0 {
 			// p is a position within searchBuff, so we need to calculate distance from the split.
 			dist = uint16(split - (p + searchBuffStart))
-			values = append(values, NewValue(false, 0, l, dist))
+			values[value_counter] = NewValue(false, 0, l, dist)
+			value_counter += 1
 			split += (int(l) - 1)
 		} else {
-			values = append(values, NewValue(true, input[split], 0, 0))
+			values[value_counter] = NewValue(true, input[split], 1, 0)
+			value_counter += 1
 		}
 	}
-	return values
+	return values[:value_counter]
 }
 
 func getLongestMatchPosAndLen(

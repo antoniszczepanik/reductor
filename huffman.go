@@ -33,7 +33,7 @@ func (n Node) DumpGraphviz(w io.Writer) {
 
 // getGraphviz recursively gets graphviz representation of all nodes with root at n.
 func (n Node) getGraphviz() string {
-	repr := fmt.Sprintf("\t%d[label=\"value=%d freq=%d\"]\n", n.id, n.value, n.freq)
+	repr := fmt.Sprintf("\t%d[label=\"value=%c freq=%d\"]\n", n.id, n.value, n.freq)
 	if n.Left != nil {
 		repr += fmt.Sprintf("\t%d -> %d[label=\"0\"]\n", n.id, n.Left.id)
 		repr += n.Left.getGraphviz()

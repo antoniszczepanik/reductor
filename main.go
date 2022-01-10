@@ -25,6 +25,19 @@ func max(a, b int) int {
 	return a
 }
 
+func getFileSize(filePath string) int64 {
+	f, err := os.Open(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return fi.Size()
+}
+
 func compress(
 	source io.Reader,
 	sink io.Writer,
@@ -79,7 +92,7 @@ func main() {
 	name := flag.String("name", "", "name for the file with compressed data")
 	flag.UintVar(&minMatch, "min-match", 4, "minimum match size for LZ77 algorithm")
 	flag.UintVar(&maxMatch, "max-match", 255, "maximum match size for LZ77 algorithm (upper limit is 255)")
-	flag.UintVar(&searchSize, "search-size", 1024, "size of the search window of LZ77 algorithm (upper limit is 65535)")
+	flag.UintVar(&searchSize, "search-size", 4096, "size of the search window of LZ77 algorithm (upper limit is 65535)")
 
 	// Diagnostic options.
 	verbose := flag.Bool("verbose", false, "display log messages")
@@ -140,6 +153,7 @@ func main() {
 	// Compression
 	if *mode {
 		log.Printf("Compress: %s\n", filePath)
+		fileSize := getFileSize(filePath)
 		if *name == "" {
 			*name = filePath + ".reduced"
 		}
@@ -149,7 +163,9 @@ func main() {
 		}
 		start := time.Now()
 		compress(f, target, byte(minMatch), byte(maxMatch), uint16(searchSize), graphf, lzf)
+		compressedFileSize := getFileSize(*name)
 		log.Printf("Time elapsed: %s\n", time.Since(start))
+		log.Printf("Compression ratio: %.2f\n", float64(fileSize)/float64(compressedFileSize))
 	} else {
 		log.Printf("Decompress: %s\n", filePath)
 		var sink io.Writer
