@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -81,21 +82,52 @@ func BytesToValues(input []byte, minMatchLen, maxMatchLen byte, maxSearchBuffLen
 	return values[:value_counter]
 }
 
-func getLongestMatchPosAndLen(
-	searchBuff []byte,
-	lookaheadBuff []byte,
-	minMatchLen byte,
-) (position int, length byte) {
-	// TODO: This is O(n*m) and could be O(n+m)
-	var matchLen, maxSoFar byte
-	for i := range searchBuff {
-		matchLen = getMatchLen(searchBuff[i:], lookaheadBuff)
+func getLongestMatchPosAndLen(text, pattern []byte, minMatchLen byte) (int, byte) {
+	if len(pattern) < int(minMatchLen) {
+		return 0, 0
+	}
+	var (
+		matchLen, maxSoFar, length byte
+		position                   int
+	)
+	// Heuristic: get indexes at which at least minMatchLen of pattern matches.
+	minMatchStarts := getMatchIndex(text, pattern[:minMatchLen])
+	for _, matchStart := range minMatchStarts {
+		matchLen = getMatchLen(text[matchStart:], pattern)
 		if matchLen >= minMatchLen && matchLen > maxSoFar {
-			position = i
+			position = matchStart
 			length, maxSoFar = matchLen, matchLen
 		}
 	}
-	return
+	return position, length
+}
+
+// getMatchIndex will return a slice of indexes at which pattern begins.
+func getMatchIndex(text, pattern []byte) []int {
+	// We surely do not have any matches.
+	if len(text) == 0 || len(text) < len(pattern) {
+		return []int{}
+	}
+	// If pattern is empty, then we have a match everywhere.
+	if len(pattern) == 0 {
+		matchIndicies := make([]int, len(text))
+		for i := range text {
+			matchIndicies[i] = i
+		}
+		return matchIndicies
+	}
+
+	matchIndices := make([]int, 0)
+	for i := range text[:len(text)-len(pattern)+1] {
+		// First compare a single byte.
+		if text[i] == pattern[0] {
+			// If single byte matches, try to compare all bytes.
+			if bytes.Equal(text[i:i+len(pattern)], pattern) {
+				matchIndices = append(matchIndices, i)
+			}
+		}
+	}
+	return matchIndices
 }
 
 // getMatchLen returns a length of a longest match between two sequences.

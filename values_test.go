@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"testing"
 )
@@ -107,6 +108,59 @@ func Test_getLongestMatchPosAndLen(t *testing.T) {
 			}
 			if l != tt.wantLen {
 				t.Errorf("unexpected len (got %d want %d)", l, tt.wantLen)
+			}
+		})
+	}
+}
+
+func Test_getMatchIndex(t *testing.T) {
+	var tests = []struct {
+		name        string
+		text        []byte
+		pattern     []byte
+		wantMatches []int
+	}{
+		{
+			name:        "Match starts at the beginning",
+			text:        []byte("hello"),
+			pattern:     []byte("hel"),
+			wantMatches: []int{0},
+		},
+		{
+			name:        "Match starts somewher in the middle",
+			text:        []byte("abchello"),
+			pattern:     []byte("hel"),
+			wantMatches: []int{3},
+		},
+		{
+			name:        "Pattern is empty",
+			text:        []byte("abchello"),
+			pattern:     []byte(""),
+			wantMatches: []int{0, 1, 2, 3, 4, 5, 6, 7},
+		},
+		{
+			name:        "Text is empty",
+			text:        []byte(""),
+			pattern:     []byte("abc"),
+			wantMatches: []int{},
+		},
+		{
+			name:        "Several matches",
+			text:        []byte("aaaabcaaaabcaaaabc"),
+			pattern:     []byte("abc"),
+			wantMatches: []int{3, 9, 15},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotMatches := getMatchIndex(tt.text, tt.pattern)
+			if len(gotMatches) != len(tt.wantMatches) {
+				t.Errorf("unexpected min match starts (got '%v' want '%v')", gotMatches, tt.wantMatches)
+			}
+			for i := range gotMatches {
+				if gotMatches[i] != tt.wantMatches[i] {
+					t.Errorf("unexpected min match starts (got '%v' want '%v')", gotMatches, tt.wantMatches)
+				}
 			}
 		})
 	}
@@ -244,5 +298,15 @@ func Test_ValuesToBytes(t *testing.T) {
 				t.Errorf("got '%s' want '%s'", got, tt.input)
 			}
 		})
+	}
+}
+
+var Values []Value
+
+func Benchmark_ValuesToBytes(b *testing.B) {
+	randomBytes := make([]byte, 1000)
+	rand.Read(randomBytes)
+	for n := 0; n < b.N; n++ {
+		Values = BytesToValues(randomBytes, 4, 255, 4096)
 	}
 }
