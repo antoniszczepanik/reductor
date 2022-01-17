@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"log"
 )
 
 // Value is a LZ77 sequence element - a literal or a pointer.
@@ -62,6 +63,7 @@ func BytesToValues(input []byte, minMatchLen, maxMatchLen byte, maxSearchBuffLen
 
 	values := make([]Value, len(input)) // Almost always it will be less, but lets over-allocate.
 	value_counter := 0
+	pointer_counter := 0
 	for split := 0; split < len(input); split += 1 {
 		searchBuffStart = max(0, split-int(maxSearchBuffLen))
 		lookaheadBuffEnd = min(len(input), split+int(maxMatchLen))
@@ -74,11 +76,13 @@ func BytesToValues(input []byte, minMatchLen, maxMatchLen byte, maxSearchBuffLen
 			values[value_counter] = NewValue(false, 0, l, dist)
 			value_counter += 1
 			split += (int(l) - 1)
+			pointer_counter += 1
 		} else {
 			values[value_counter] = NewValue(true, input[split], 1, 0)
 			value_counter += 1
 		}
 	}
+	log.Printf("Pointers ratio: %.2f\n", float64(pointer_counter)/float64(value_counter))
 	return values[:value_counter]
 }
 
