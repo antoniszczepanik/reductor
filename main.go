@@ -8,35 +8,9 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
+	"strings"
 	"time"
 )
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a < b {
-		return b
-	}
-	return a
-}
-
-func getFileSize(filePath string) int64 {
-	f, err := os.Open(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return fi.Size()
-}
 
 func compress(
 	source io.Reader,
@@ -54,7 +28,7 @@ func compress(
 		log.Fatal(err)
 	}
 	log.Printf("Input size(bytes): %d\n", len(input))
-	// LZ77 coding.
+	// LZ coding.
 	values := BytesToValues(input, minMatch, maxMatch, searchSize)
 	for _, v := range values {
 		fmt.Fprintf(lzf, "%v", v)
@@ -90,14 +64,14 @@ func main() {
 
 	mode := flag.Bool("compress", true, "run the program in compression mode")
 	name := flag.String("name", "", "name for the file with compressed data")
-	flag.UintVar(&minMatch, "min-match", 4, "minimum match size for LZ77 algorithm")
-	flag.UintVar(&maxMatch, "max-match", 255, "maximum match size for LZ77 algorithm (upper limit is 255)")
-	flag.UintVar(&searchSize, "search-size", 4096, "size of the search window of LZ77 algorithm (upper limit is 65535)")
+	flag.UintVar(&minMatch, "min-match", 4, "minimum match size for LZ algorithm")
+	flag.UintVar(&maxMatch, "max-match", 255, "maximum match size for LZ algorithm (upper limit is 255)")
+	flag.UintVar(&searchSize, "search-size", 4096, "size of the search window of LZ algorithm (upper limit is 65535)")
 
 	// Diagnostic options.
 	verbose := flag.Bool("verbose", false, "display log messages")
 	graphvizPath := flag.String("graphviz", "", "write graphviz huffman tree representation to file")
-	lz77Path := flag.String("lz77", "", "write lz77 representation to file")
+	lzPath := flag.String("lz", "", "write lz representation to file")
 	cpuProfilePath := flag.String("cpuprofile", "", "write cpu profile to file")
 	flag.Parse()
 
@@ -134,11 +108,11 @@ func main() {
 		graphf = ioutil.Discard
 	}
 
-	// Open LZ77 writer.
+	// Open LZ writer.
 	var lzf io.Writer
-	if *lz77Path != "" {
-		log.Printf("Will create LZ77 representation: %s\n", *lz77Path)
-		lzf, err = os.Create(*lz77Path)
+	if *lzPath != "" {
+		log.Printf("Will create LZ representation: %s\n", *lzPath)
+		lzf, err = os.Create(*lzPath)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -150,7 +124,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Compression
+
 	if *mode {
 		log.Printf("Compress: %s\n", filePath)
 		fileSize := getFileSize(filePath)
@@ -170,7 +144,11 @@ func main() {
 		log.Printf("Decompress: %s\n", filePath)
 		var sink io.Writer
 		if *name == "" {
-			*name = filePath[:len(filePath)-8] + ".unreduced"
+			// Strip off ".reduced" suffix if present.
+			if strings.EqualFold(filePath[len(filePath)-8:], ".reduced") {
+				*name = filePath[:len(filePath)-8]
+			}
+			*name += filePath + ".unreduced"
 			log.Printf("Writing decompressed data to %s\n", *name)
 			sink, err = os.Create(*name)
 			if err != nil {
