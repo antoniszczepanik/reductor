@@ -123,11 +123,15 @@ func getMatchIndex(text, pattern []byte) []int {
 
 	matchIndices := make([]int, 0)
 	for i := range text[:len(text)-len(pattern)+1] {
-		// First compare a single byte.
+		// Just look for where pattern matches. This is hot path, and this
+		// way to compare bytes turned out to be the fastest experimentally.
 		if text[i] == pattern[0] {
-			// If single byte matches, try to compare all bytes.
-			if bytes.Equal(text[i:i+len(pattern)], pattern) {
-				matchIndices = append(matchIndices, i)
+			if text[i+1] == pattern[1] {
+				if text[i+2] == pattern[2] {
+					if bytes.Equal(text[i+3:i+len(pattern)], pattern[3:len(pattern)]) {
+						matchIndices = append(matchIndices, i)
+					}
+				}
 			}
 		}
 	}
