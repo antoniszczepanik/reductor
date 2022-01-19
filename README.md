@@ -2,6 +2,8 @@
 
 A lossless compressor combining LZ and Huffman Coding.
 
+## Quickstart
+
 ```sh
 > go build .
 > ./reductor
@@ -53,6 +55,8 @@ Now, lets decompress it:
 ...
 ```
 
+## Visualisations
+
 The compressor allows to visualize what happens under the hood.
 It can dump LZ encoded representation to a file via `--lz <filename>`.
 In this representation LZ "pointers" are symbolicly representad as `<distance,length>`.
@@ -76,3 +80,14 @@ For a tree generated compressing this file (with LZ coding turned off) it looks 
 that bytes are represented by numbers, because we get outside of readable ASCII range in the tree.
 
 ![Huffman Tree created for compressing this README.md file contents.](huffman_tree_example.png)
+
+## Performance assesment
+
+File | Size | Comp Ratio - Gzip | Comp/Decomp Time - Gzip | Comp Ratio - reductor | Comp/Decom time - reductor
+--- | --- | --- | --- | --- | ---
+enwik | 1Gb | 3.09 | 45.64s/8.47s | 2.11 | 1h105s/193s
+log18MB.txt | 18Mb | 1027 | 101ms/100ms | 290 | 63.71s/78ms
+random1MB.txt | 1Mb | 0.99 | 37ms/12ms | 0.89 | 9.5s/327ms
+yellowsub.txt | 1.5Kb | 2.90 | 2ms/2ms | 1.80 | 3.2ms/0.48ms
+singlechar.txt | 2bytes | 0.05 | 1ms/1ms | 0.33 | 0.07/0.06ms
+reductor | 2.5Mb | 1.81 | 126ms/28ms | 1.45 | 13.91/530m
