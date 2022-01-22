@@ -4,7 +4,7 @@ A lossless compressor combining LZ and Huffman Coding.
 
 ## Quickstart
 
-```sh
+```console
 > go build .
 > ./reductor
 Usage: ./reductor [OPTIONS] <filename>
@@ -30,7 +30,7 @@ Usage: ./reductor [OPTIONS] <filename>
 
 Providing it with just a path will create `<old-filename>.reduced` compressed file.
 Lets compress the executable itself:
-```sh
+```console
 > ./reductor -verbose reductor
 2022/01/19 00:09:35 Running ./reductor in verbose mode
 2022/01/19 00:09:35 Compress: reductor
@@ -45,7 +45,7 @@ Lets compress the executable itself:
 ...
 ```
 Now, lets decompress it:
-```sh
+```console
 > ./reductor -compress=false reductor.reduced
 > ls
 ...
@@ -55,19 +55,21 @@ Now, lets decompress it:
 ...
 ```
 
-## Visualisations
+## Visuals
 
 The compressor allows to visualize what happens under the hood.
 It can dump LZ encoded representation to a file via `--lz <filename>`.
 In this representation LZ "pointers" are symbolicly representad as `<distance,length>`.
 Beginning of LZ representation for compressing this README contents is as follows:
 
-```txt
+```console
+> ./reductor -lz lz.txt README.md
+> cat lz.txt
 # Reductor
 
 A lossless compressor<11,4>bining LZ and Huffman Coding.
 
-```sh
+```console
 > go build .
 > ./r<89,7> --help
 Usage of<27,11>:
@@ -81,11 +83,13 @@ that bytes are represented by numbers, because we get outside of readable ASCII 
 
 ![Huffman Tree created for compressing this README.md file contents.](huffman_tree_example.png)
 
-## Performance assesment
+## Performance
+
+#### TODO: This is out of date, comp/decomp times are ~3x faster
 
 File | Size | Comp Ratio - Gzip | Comp/Decomp Time - Gzip | Comp Ratio - reductor | Comp/Decom time - reductor
 --- | --- | --- | --- | --- | ---
-enwik | 1Gb | 3.09 | 45.64s/8.47s | 2.11 | 1h105s/193s
+enwik9 | 1Gb | 3.09 | 45.64s/8.47s | 2.11 | 1h105s/193s
 log18MB.txt | 18Mb | 1027 | 101ms/100ms | 290 | 63.71s/78ms
 random1MB.txt | 1Mb | 0.99 | 37ms/12ms | 0.89 | 9.5s/327ms
 yellowsub.txt | 1.5Kb | 2.90 | 2ms/2ms | 1.80 | 3.2ms/0.48ms
