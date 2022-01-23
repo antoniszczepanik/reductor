@@ -146,9 +146,10 @@ func main() {
 		if *name == "" {
 			// Strip off ".reduced" suffix if present.
 			if strings.EqualFold(filePath[len(filePath)-8:], ".reduced") {
-				*name = filePath[:len(filePath)-8]
+				*name = filePath[:len(filePath)-8] + ".unreduced"
+			} else {
+				*name = filePath + ".unreduced"
 			}
-			*name += filePath + ".unreduced"
 			log.Printf("Writing decompressed data to %s\n", *name)
 			sink, err = os.Create(*name)
 			if err != nil {
